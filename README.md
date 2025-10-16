@@ -14,7 +14,7 @@ A physics simulation tool that models rigid body dynamics with rotational effect
 
 ## Example Output
 
-![Trust Fall Analysis Visualization](trust_fall_analysis.png)
+![Trust Fall Analysis Visualization](./trust_fall_analysis.png)
 
 *Example visualization showing force distribution analysis for a 250 lb person falling from 1.5m platform with 4-foot catch height*
 

@@ -118,6 +118,7 @@ dmypy.json
 
 # Project specific
 *.png
+!trust_fall_analysis.png
 *.jpg
 *.jpeg
 *.gif
