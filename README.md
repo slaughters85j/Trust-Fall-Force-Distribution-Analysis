@@ -12,6 +12,12 @@ A physics simulation tool that models rigid body dynamics with rotational effect
 - **CLI and GUI interfaces** for different use cases
 - **Validation tests** to ensure physics conservation laws
 
+## Example Output
+
+![Trust Fall Analysis Visualization](trust_fall_analysis.png)
+
+*Example visualization showing force distribution analysis for a 250 lb person falling from 1.5m platform with 4-foot catch height*
+
 ## Installation
 
 ### Prerequisites
