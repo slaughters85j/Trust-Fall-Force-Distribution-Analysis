@@ -282,20 +282,48 @@ def newtons_to_pounds(newtons: float) -> float:
     """Convert Newtons to pounds-force"""
     return newtons * 0.224809
 
+def meters_to_feet(meters: float) -> float:
+    """Convert meters to feet"""
+    return meters / 0.3048
 
-def visualize_results(sim: TrustFallSimulation, results: dict):
-    """Create visualization of force distribution"""
+def mps_to_mph(mps: float) -> float:
+    """Convert m/s to mph"""
+    return mps * 2.237
+
+def mps_to_fps(mps: float) -> float:
+    """Convert m/s to ft/s"""
+    return mps / 0.3048
+
+
+def visualize_results(sim: TrustFallSimulation, results: dict, use_metric: bool = True):
+    """Create visualization of force distribution
+    
+    Args:
+        sim: TrustFallSimulation instance
+        results: Simulation results dictionary
+        use_metric: If True, display in metric units. If False, display in Imperial units
+    """
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     
     # 1. Force distribution by body segment
     ax1 = axes[0, 0]
     segment_names = [s.name for s in sim.segments]
-    forces_lbs = [newtons_to_pounds(f) for f in results['segment_forces']]
     
-    bars = ax1.barh(segment_names, forces_lbs, color='steelblue')
-    ax1.set_xlabel('Force (lbs)')
+    if use_metric:
+        forces_display = list(results['segment_forces'])
+        force_unit = 'N'
+        max_force_threshold = 400  # 400N ≈ 90 lbs
+        threshold_label = 'Max per catcher (400 N)'
+    else:
+        forces_display = [newtons_to_pounds(f) for f in results['segment_forces']]
+        force_unit = 'lbs'
+        max_force_threshold = 90  # 90 lbs ≈ 400N
+        threshold_label = 'Max per catcher (90 lbs)'
+    
+    bars = ax1.barh(segment_names, forces_display, color='steelblue')
+    ax1.set_xlabel(f'Force ({force_unit})')
     ax1.set_title('Force Distribution by Body Segment')
-    ax1.axvline(x=90, color='r', linestyle='--', label='Max per catcher (90 lbs)')
+    ax1.axvline(x=max_force_threshold, color='r', linestyle='--', label=threshold_label)
     ax1.legend()
     ax1.grid(axis='x', alpha=0.3)
     
@@ -311,33 +339,52 @@ def visualize_results(sim: TrustFallSimulation, results: dict):
     ax3 = axes[1, 0]
     body_length = sim.person_height
     
+    if use_metric:
+        body_display_length = body_length
+        length_unit = 'm'
+    else:
+        body_display_length = meters_to_feet(body_length)
+        length_unit = 'ft'
+    
     # Draw body segments
     for segment in sim.segments:
         pos = segment.get_position(body_length)
         width = segment.length_fraction * body_length
         mass = segment.get_mass(sim.person_mass)
         
+        # Convert positions for display
+        if use_metric:
+            pos_display = pos
+            width_display = width
+        else:
+            pos_display = meters_to_feet(pos)
+            width_display = meters_to_feet(width)
+        
         rect = plt.Rectangle(
-            (0, pos - width/2), 
+            (0, pos_display - width_display/2), 
             mass/sim.person_mass * 2,  # Width proportional to mass
-            width,
+            width_display,
             alpha=0.5,
             color='lightblue',
             edgecolor='black'
         )
         ax3.add_patch(rect)
-        ax3.text(1.1, pos, segment.name, va='center', fontsize=9)
+        ax3.text(1.1, pos_display, segment.name, va='center', fontsize=9)
     
     # Draw catcher positions
     for i, catcher_pos in enumerate(results['catcher_positions']):
         pos_meters = catcher_pos * body_length
-        ax3.plot([2.2], [pos_meters], 'ro', markersize=10)
-        ax3.text(2.3, pos_meters, f'C{i+1}', va='center', fontsize=9)
+        if use_metric:
+            pos_display = pos_meters
+        else:
+            pos_display = meters_to_feet(pos_meters)
+        ax3.plot([2.2], [pos_display], 'ro', markersize=10)
+        ax3.text(2.3, pos_display, f'C{i+1}', va='center', fontsize=9)
     
     ax3.set_xlim(-0.5, 3)
-    ax3.set_ylim(-0.1, body_length + 0.1)
+    ax3.set_ylim(-0.1 * (body_display_length/body_length), body_display_length + 0.1 * (body_display_length/body_length))
     ax3.set_xlabel('Relative Mass →')
-    ax3.set_ylabel('Position along body (m)')
+    ax3.set_ylabel(f'Position along body ({length_unit})')
     ax3.set_title('Catcher Positioning (Red dots)')
     ax3.grid(alpha=0.3)
     
@@ -345,20 +392,38 @@ def visualize_results(sim: TrustFallSimulation, results: dict):
     ax4 = axes[1, 1]
     ax4.axis('off')
     
+    # Format values based on unit preference
+    if use_metric:
+        fall_distance_str = f"{sim.fall_distance:.2f} m"
+        velocity_str = f"{sim.impact_velocity:.2f} m/s ({mps_to_mph(sim.impact_velocity):.1f} mph)"
+        energy_str = f"{sim.calculate_impact_energy():.0f} J"
+        peak_segment_force_str = f"{results['peak_segment_force']:.0f} N"
+        peak_catcher_force_str = f"{results['peak_catcher_force']:.0f} N"
+        total_force_str = f"{results['total_force']:.0f} N"
+        avg_force_str = f"{results['force_per_catcher_avg']:.0f} N"
+    else:
+        fall_distance_str = f"{meters_to_feet(sim.fall_distance):.2f} ft"
+        velocity_str = f"{mps_to_fps(sim.impact_velocity):.1f} ft/s ({mps_to_mph(sim.impact_velocity):.1f} mph)"
+        energy_str = f"{sim.calculate_impact_energy():.0f} J"  # Keep energy in Joules
+        peak_segment_force_str = f"{newtons_to_pounds(results['peak_segment_force']):.0f} lbs"
+        peak_catcher_force_str = f"{newtons_to_pounds(results['peak_catcher_force']):.0f} lbs"
+        total_force_str = f"{newtons_to_pounds(results['total_force']):.0f} lbs"
+        avg_force_str = f"{newtons_to_pounds(results['force_per_catcher_avg']):.0f} lbs"
+    
     summary_text = f"""
     TRUST FALL ANALYSIS SUMMARY
     ═══════════════════════════════════════
     
     Impact Conditions:
-    • Fall distance: {sim.fall_distance:.2f} m
-    • Impact velocity: {sim.impact_velocity:.2f} m/s ({sim.impact_velocity*2.237:.1f} mph)
-    • Kinetic energy: {sim.calculate_impact_energy():.0f} J
+    • Fall distance: {fall_distance_str}
+    • Impact velocity: {velocity_str}
+    • Kinetic energy: {energy_str}
     
     Force Analysis:
-    • Peak segment force: {newtons_to_pounds(results['peak_segment_force']):.0f} lbs
-    • Peak catcher force: {newtons_to_pounds(results['peak_catcher_force']):.0f} lbs
-    • Total force to arrest: {newtons_to_pounds(results['total_force']):.0f} lbs
-    • Avg force per catcher: {newtons_to_pounds(results['force_per_catcher_avg']):.0f} lbs
+    • Peak segment force: {peak_segment_force_str}
+    • Peak catcher force: {peak_catcher_force_str}
+    • Total force to arrest: {total_force_str}
+    • Avg force per catcher: {avg_force_str}
     
     Deceleration:
     • Time to stop: {results['deceleration_time']*1000:.0f} ms
@@ -472,7 +537,7 @@ def main():
     
     # Visualize
     print("\nGenerating visualization...")
-    fig = visualize_results(sim, optimized_results)
+    fig = visualize_results(sim, optimized_results, use_metric=True)  # Default to metric for main function
     plt.savefig('/Users/system-backup/Downloads/trust_fall_analysis.png', dpi=300, bbox_inches='tight')
     print("✓ Visualization saved")
     
